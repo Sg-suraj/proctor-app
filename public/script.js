@@ -1,26 +1,26 @@
 // --- 1. SETUP ---
-const socket = io('/'); // Connect to the server's Socket.IO instance
-const peers = {}; // Object to store connected peers
+const socket = io('/');
+const peers = {};
 
-// ** THE FIX IS HERE **
-// Create a new Peer connection with specific server configuration for reliability
 const myPeer = new Peer(undefined, {
     host: '0.peerjs.com',
     port: 443,
     path: '/'
 });
 
-// Get HTML elements from the page
 const proctorView = document.getElementById('proctor-view');
 const examineeView = document.getElementById('examinee-view');
 const videoGrid = document.getElementById('video-grid');
 const myVideoEl = document.getElementById('my-video');
 const quizFrame = document.getElementById('quiz-frame');
+// ** THIS IS THE FIX **
+// Get the Room ID from the hidden div passed by the server
+const ROOM_ID = document.getElementById('room-id').innerText;
 
 // --- 2. DETERMINE USER ROLE ---
 const urlParams = new URLSearchParams(window.location.search);
 const role = urlParams.get('role');
-const ROOM_ID = window.location.pathname.substring(1);
+// const ROOM_ID = window.location.pathname.substring(1); // <-- THIS OLD LINE IS REMOVED
 
 console.log(`This device's role is: ${role || 'Proctor'}`);
 console.log(`Joining Room ID: ${ROOM_ID}`);
@@ -77,7 +77,6 @@ function connectToNewUser(userId) {
     
     console.log(`Proctor: Calling Peer ID ${userId}...`);
 
-    // This is the line that was causing the error. It should now work.
     call.on('stream', userVideoStream => {
         console.log(`Proctor: Successfully received stream from ${userId}!`);
         addVideoStream(video, userVideoStream);

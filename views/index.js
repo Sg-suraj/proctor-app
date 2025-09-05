@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>WebRTC Proctoring Session</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div id="room-id" style="display: none;"><%= roomId %></div>
+
+    <div id="proctor-view">
+        <h1>Proctoring Session 🕵️</h1>
+        <div id="video-grid">
+            <p>Waiting for examinee to connect...</p>
+        </div>
+    </div>
+    <div id="examinee-view">
+        <div id="my-video-container">
+            <video id="my-video"></video>
+        </div>
+        <iframe id="quiz-frame" src="" title="Quiz Content"></iframe>
+    </div>
+
+    <script src="/script.js"></script>
+</body>
+</html>
