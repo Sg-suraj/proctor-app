@@ -9,7 +9,7 @@ body, html {
     overflow: hidden;
 }
 
-/* Hide both views by default until the script decides which one to show */
+/* Hide views by default; the script will show the correct one */
 #proctor-view, #examinee-view {
     display: none;
     width: 100%;
@@ -52,7 +52,7 @@ body, html {
     width: 100%;
     height: 100%;
     border: none;
-    background-color: #fff; /* A default background while the quiz loads */
+    background-color: #fff;
 }
 #my-video-container {
     position: absolute;
