@@ -4,15 +4,17 @@ const server = require('http').Server(app);
 const io = require('socket.io')(server);
 const { v4: uuidV4 } = require('uuid');
 
-app.set('view engine', 'ejs'); // Set EJS as the template engine
+app.set('view engine', 'ejs');
 app.use(express.static('public'));
+
+// Fix for favicon error
+app.get('/favicon.ico', (req, res) => res.status(204).send());
 
 app.get('/', (req, res) => {
     res.redirect(`/${uuidV4()}`);
 });
 
 app.get('/:room', (req, res) => {
-    // Render the page and pass the roomId to it
     res.render('index', { roomId: req.params.room });
 });
 
