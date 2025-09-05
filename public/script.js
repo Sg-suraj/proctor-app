@@ -1,91 +1,42 @@
-// Wait for the entire HTML page to be loaded and ready
-document.addEventListener('DOMContentLoaded', () => {
-    
-    const socket = io('/');
-    const peers = {};
+const express = require('express');
+const app = express();
+const server = require('http').Server(app);
+const io = require('socket.io')(server);
+const { v4: uuidV4 } = require('uuid');
 
-    // ** THIS IS THE REAL FIX **
-    // Configure a reliable PeerJS server connection to prevent myPeer.call() from failing.
-    const myPeer = new Peer(undefined, {
-        host: '0.peerjs.com',
-        port: 443,
-        path: '/'
-    });
+// Set EJS as the template engine
+app.set('view engine', 'ejs');
 
-    // Get all necessary HTML elements
-    const proctorView = document.getElementById('proctor-view');
-    const examineeView = document.getElementById('examinee-view');
-    const videoGrid = document.getElementById('video-grid');
-    const myVideoEl = document.getElementById('my-video');
-    const quizFrame = document.getElementById('quiz-frame');
-    const ROOM_ID = document.getElementById('room-id').innerText.trim();
+// Serve static files (CSS, frontend JS) from the 'public' folder
+app.use(express.static('public'));
 
-    // Determine user role from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const role = urlParams.get('role');
+// Handle favicon requests to prevent errors in the console
+app.get('/favicon.ico', (req, res) => res.status(204).send());
 
-    // Initialize page based on role
-    if (role === 'examinee') {
-        examineeView.style.display = 'block';
-        quizFrame.src = 'https://iamquiz.netlify.app/';
-
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            .then(stream => {
-                myVideoEl.srcObject = stream;
-                myVideoEl.muted = true;
-                myVideoEl.addEventListener('loadedmetadata', () => myVideoEl.play());
-
-                myPeer.on('call', call => {
-                    call.answer(stream);
-                });
-            })
-            .catch(err => {
-                alert("Camera and microphone access is required to start the exam.");
-            });
-    } else {
-        proctorView.style.display = 'flex';
-        socket.on('user-connected', userId => {
-            setTimeout(() => connectToNewUser(userId), 1500);
-        });
-    }
-
-    // Shared WebRTC & Socket logic
-    myPeer.on('open', id => {
-        socket.emit('join-room', ROOM_ID, id);
-    });
-
-    socket.on('user-disconnected', userId => {
-        if (peers[userId]) peers[userId].close();
-    });
-
-    function connectToNewUser(userId) {
-        const call = myPeer.call(userId, null);
-        const video = document.createElement('video');
-        
-        // This check is good for robustness, but the main fix above is what solves the error
-        if (!call) {
-            console.error('Failed to initiate call with user:', userId);
-            return;
-        }
-
-        call.on('stream', userVideoStream => {
-            addVideoStream(video, userVideoStream);
-        });
-
-        call.on('close', () => {
-            video.remove();
-            videoGrid.innerHTML = '<p>Examinee has disconnected.</p>';
-        });
-
-        peers[userId] = call;
-    }
-
-    function addVideoStream(video, stream) {
-        videoGrid.innerHTML = '';
-        video.srcObject = stream;
-        video.addEventListener('loadedmetadata', () => {
-            video.play();
-        });
-        videoGrid.append(video);
-    }
+// When a user visits the root, create a new room and redirect them
+app.get('/', (req, res) => {
+    res.redirect(`/${uuidV4()}`);
 });
+
+// When a user visits a room URL, render the EJS template
+app.get('/:room', (req, res) => {
+    // Pass the room's ID into the HTML page
+    res.render('index', { roomId: req.params.room });
+});
+
+// Handle real-time connections
+io.on('connection', socket => {
+    socket.on('join-room', (roomId, userId) => {
+        socket.join(roomId);
+        // Announce to others in the room that a new user has connected
+        socket.to(roomId).emit('user-connected', userId);
+
+        socket.on('disconnect', () => {
+            // Announce when a user disconnects
+            socket.to(roomId).emit('user-disconnected', userId);
+        });
+    });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
