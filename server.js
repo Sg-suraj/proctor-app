@@ -6,11 +6,13 @@ const { v4: uuidV4 } = require('uuid');
 const { ExpressPeerServer } = require('peer'); // <-- FIX 1: Import PeerServer
 
 // --- Create the Peer server and tell it to use your existing http server ---
+// --- THE CORRECTED CODE ---
 const peerServer = ExpressPeerServer(server, {
     debug: true,
-    path: '/peerjs' // This is the path the client 'script.js' will connect to
+    path: '/' // <-- THE FIX. Tell the peer server to operate on its own root.
 });
 
+app.use('/peerjs', peerServer); // Express will now correctly route /peerjs/id to the peer server's /id.
 // --- Tell Express to use the Peer server at this path ---
 app.use('/peerjs', peerServer);
 
