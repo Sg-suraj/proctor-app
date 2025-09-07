@@ -7,12 +7,12 @@ const { v4: uuidV4 } = require('uuid');
 // Set EJS as the template engine
 app.set('view engine', 'ejs');
 
-// Handle the specific root route FIRST (This is the redirect fix)
+// Handle the specific root route FIRST (This fixes the Render redirect bug)
 app.get('/', (req, res) => {
     res.redirect(`/${uuidV4()}`);
 });
 
-// Handle static files AFTER specific routes
+// Handle static files AFTER the specific routes
 app.use(express.static('public'));
 
 // Handle favicon requests to prevent errors in the console
