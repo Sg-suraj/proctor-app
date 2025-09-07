@@ -3,37 +3,33 @@ const app = express();
 const server = require('http').Server(app);
 const io = require('socket.io')(server);
 const { v4: uuidV4 } = require('uuid');
-const { ExpressPeerServer } = require('peer'); // <-- FIX 1: Import PeerServer
+const { ExpressPeerServer } = require('peer'); // Requires "npm install peer"
 
-// --- Create the Peer server and tell it to use your existing http server ---
-// --- THE CORRECTED CODE ---
+// Create the Peer server
 const peerServer = ExpressPeerServer(server, {
     debug: true,
-    path: '/' // <-- THE FIX. Tell the peer server to operate on its own root.
+    path: '/' // The server will operate on its own root
 });
 
-app.use('/peerjs', peerServer); // Express will now correctly route /peerjs/id to the peer server's /id.
-// --- Tell Express to use the Peer server at this path ---
+// Tell Express to use the Peer server at the /peerjs path
 app.use('/peerjs', peerServer);
 
 // Set EJS as the template engine
 app.set('view engine', 'ejs');
 
-// --- FIX 2: Handle the specific root route FIRST ---
-// This fixes the bug where Render would not redirect.
+// Handle the specific root route FIRST (fixes redirect bug)
 app.get('/', (req, res) => {
     res.redirect(`/${uuidV4()}`);
 });
 
-// --- Handle static files AFTER the specific routes ---
+// Handle static files AFTER the specific routes
 app.use(express.static('public'));
 
-// Handle favicon requests to prevent errors in the console
+// Handle favicon requests
 app.get('/favicon.ico', (req, res) => res.status(204).send());
 
 // When a user visits a room URL, render the EJS template
 app.get('/:room', (req, res) => {
-    // Pass the room's ID into the HTML page
     res.render('index', { roomId: req.params.room });
 });
 
@@ -41,11 +37,9 @@ app.get('/:room', (req, res) => {
 io.on('connection', socket => {
     socket.on('join-room', (roomId, userId) => {
         socket.join(roomId);
-        // Announce to others in the room that a new user has connected
         socket.to(roomId).emit('user-connected', userId);
 
         socket.on('disconnect', () => {
-            // Announce when a user disconnects
             socket.to(roomId).emit('user-disconnected', userId);
         });
     });
