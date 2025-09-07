@@ -4,8 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const socket = io('/');
     const peers = {};
 
-    // ** FINAL FIX: ADDING A TURN SERVER **
-    // This configuration helps bypass restrictive firewalls.
     const myPeer = new Peer(undefined, {
         host: '0.peerjs.com',
         port: 443,
@@ -35,31 +33,45 @@ document.addEventListener('DOMContentLoaded', () => {
         examineeView.style.display = 'block';
         quizFrame.src = 'https://iamquiz.netlify.app/';
 
+        // 1. First, get the camera/mic stream
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
             .then(stream => {
+                // 2. Show self-view
                 myVideoEl.srcObject = stream;
                 myVideoEl.muted = true;
                 myVideoEl.addEventListener('loadedmetadata', () => myVideoEl.play());
 
+                // 3. Set up the handler to ANSWER calls
                 myPeer.on('call', call => {
                     call.answer(stream);
+                });
+
+                // 4. NOW that we are ready to answer, wait for our PeerJS ID 
+                //    and THEN join the socket room to announce our presence.
+                myPeer.on('open', id => {
+                    socket.emit('join-room', ROOM_ID, id);
                 });
             })
             .catch(err => {
                 alert("Camera and microphone access is required to start the exam.");
             });
     } else {
+        // This is the PROCTOR flow
         proctorView.style.display = 'flex';
+        
         socket.on('user-connected', userId => {
-            setTimeout(() => connectToNewUser(userId), 1500);
+            // This timeout is still good practice to let the connection stabilize,
+            // but the race condition is gone since we know the user is ready.
+            setTimeout(() => connectToNewUser(userId), 1000); 
+        });
+
+        // The proctor can join immediately.
+        myPeer.on('open', id => {
+            socket.emit('join-room', ROOM_ID, id);
         });
     }
 
-    // Shared WebRTC & Socket logic
-    myPeer.on('open', id => {
-        socket.emit('join-room', ROOM_ID, id);
-    });
-
+    // This listener is shared and fine here
     socket.on('user-disconnected', userId => {
         if (peers[userId]) peers[userId].close();
     });
@@ -68,11 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const call = myPeer.call(userId, null);
         const video = document.createElement('video');
         
-        // --- THIS IS THE FIX ---
-        // You must mute the proctor's video element, or the browser
-        // will block autoplay because the examinee's stream has audio.
+        // --- FIX 1: THE AUTOPLAY FIX (STILL REQUIRED) ---
+        // Browser will block the video unless it's muted.
         video.muted = true; 
-        // -------------------------
         
         if (!call) {
             console.error('Failed to initiate call with user:', userId);
