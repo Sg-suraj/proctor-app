@@ -26,8 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const quizFrame = document.getElementById('quiz-frame');
     const ROOM_ID = document.getElementById('room-id').innerText.trim();
 
-    // ... The rest of your script.js file is exactly the same ...
-
     // Determine user role from URL
     const urlParams = new URLSearchParams(window.location.search);
     const role = urlParams.get('role');
@@ -69,6 +67,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function connectToNewUser(userId) {
         const call = myPeer.call(userId, null);
         const video = document.createElement('video');
+        
+        // --- THIS IS THE FIX ---
+        // You must mute the proctor's video element, or the browser
+        // will block autoplay because the examinee's stream has audio.
+        video.muted = true; 
+        // -------------------------
         
         if (!call) {
             console.error('Failed to initiate call with user:', userId);
