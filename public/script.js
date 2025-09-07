@@ -4,17 +4,43 @@ document.addEventListener('DOMContentLoaded', () => {
     const socket = io('/');
     const peers = {};
 
+    // ===================================================================
+    // THIS IS THE UPDATED BLOCK. It now points to your own server 
+    // (at /peerjs) and uses the correct, secure TURN credentials.
+    // ===================================================================
     const myPeer = new Peer(undefined, {
-        host: '0.peerjs.com',
-        port: 443,
-        path: '/',
+        // 1. Point to your own server (on Render)
+        host: '/', // This uses the same domain as your website
+        port: 443, // Render default secure port
+        path: '/peerjs', // The path we defined in server.js
         config: {
             'iceServers': [
+                // Google's STUN server (this is fine)
                 { urls: 'stun:stun.l.google.com:19302' },
-                { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' }
+                
+                // 2. The UPDATED OpenRelay TURN configuration
+                {
+                    urls: 'turn:staticauth.openrelay.metered.ca:80',
+                    username: 'openrelayproject',
+                    credential: 'openrelayprojectsecret'
+                },
+                {
+                    urls: 'turn:staticauth.openrelay.metered.ca:443',
+                    username: 'openrelayproject',
+                    credential: 'openrelayprojectsecret'
+                },
+                {
+                    urls: 'turns:staticauth.openrelay.metered.ca:443?transport=tcp',
+                    username: 'openrelayproject',
+                    credential: 'openrelayprojectsecret'
+                }
             ]
         }
     });
+    // ===================================================================
+    // END OF UPDATED BLOCK
+    // ===================================================================
+
 
     // Get all necessary HTML elements
     const proctorView = document.getElementById('proctor-view');
@@ -28,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const urlParams = new URLSearchParams(window.location.search);
     const role = urlParams.get('role');
 
-    // Initialize page based on role
+    // Initialize page based on role (THIS INCLUDES OUR RACE-CONDITION FIX)
     if (role === 'examinee') {
         examineeView.style.display = 'block';
         quizFrame.src = 'https://iamquiz.netlify.app/';
@@ -60,8 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
         proctorView.style.display = 'flex';
         
         socket.on('user-connected', userId => {
-            // This timeout is still good practice to let the connection stabilize,
-            // but the race condition is gone since we know the user is ready.
             setTimeout(() => connectToNewUser(userId), 1000); 
         });
 
@@ -80,8 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const call = myPeer.call(userId, null);
         const video = document.createElement('video');
         
-        // --- FIX 1: THE AUTOPLAY FIX (STILL REQUIRED) ---
-        // Browser will block the video unless it's muted.
+        // This includes our AUTOPLAY FIX
         video.muted = true; 
         
         if (!call) {
